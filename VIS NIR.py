@@ -1,7 +1,12 @@
-import spectral as sp
-from matplotlib import pyplot as plt
-import cv2
-import numpy as np
+import os                      # Para manejar rutas y operaciones del sistema de archivos
+import tifffile                # Para leer y mostrar imágenes TIFF, especialmente hiperespectrales
+import numpy as np             # Para manejo de arrays, cálculos numéricos y operaciones matriciales
+from matplotlib import pyplot as plt  # Para crear gráficas, mostrar espectros y visualización general
+import tkinter as tk           # Para crear interfaces gráficas simples (ventanas)
+from tkinter import filedialog # Para abrir ventanas de selección de archivos
+from scipy.interpolate import make_interp_spline  # Para suavizar curvas mediante interpolación spline
+
+
 
 # Longitudes de onda asociadas
 wavelen = np.array([350, 354, 358, 362, 366, 370, 374, 378, 382, 386, 390, 394, 398, 402, 406, 410, 414, 418, 422, 426,
@@ -14,18 +19,28 @@ wavelen = np.array([350, 354, 358, 362, 366, 370, 374, 378, 382, 386, 390, 394, 
                     910, 914, 918, 922, 926, 930, 934, 938, 942, 946, 950, 954, 958, 962, 966, 970, 974, 978, 982, 986,
                     990, 994, 998, 1002])
 
-# Cargar imagen hiperespectral
-hdr = sp.envi.open("C:/Users/andea/Documents/hyspex_image_inspector/resources/vignatestigo1_Baldur_S-384N_SN12022_2832us_2025-06-24T104209_raw.hdr")
-wvl = hdr.bands.centers
-rows, cols, bands = hdr.nrows, hdr.ncols, hdr.nbands
-meta = hdr.metadata
+# Selección de imagen con ventana emergente
+root = tk.Tk()
+root.withdraw()  # Oculta la ventana principal
 
+img_path = filedialog.askopenfilename(
+    title="Selecciona la imagen hiperespectral",
+    filetypes=[("TIFF files", "*.tif *.tiff"), ("All files", "*.*")]
+)
+
+if not img_path:
+    print("No se seleccionó ninguna imagen.")
+    exit()
+
+# Cargar imagen
+img = tifffile.imread(img_path).astype(float)
+img = img[:, :, 12:]  # Eliminar las 12 primeras bandas: Ultravioleta
+wavelen = wavelen[12:]
+
+# Clase de control de eventos
 class EventController():
-    def __init__(self, ax, img_shape, resize_shape):
+    def __init__(self):
         self.shift_is_held = False
-        self.ax = ax
-        self.img_shape = img_shape  # (rows, cols)
-        self.resize_shape = resize_shape  # (height, width)
 
     def on_key_press(self, event):
         if event.key == 'shift':
@@ -38,25 +53,33 @@ class EventController():
     def onclick(self, event):
         if self.shift_is_held and not event.dblclick and event.button == 1 and (event.xdata is not None) and (event.ydata is not None):
             self.shift_is_held = False
-            # Mapear coordenadas del plot a la imagen original
-            x_plot, y_plot = int(event.xdata), int(event.ydata)
-            orig_x = int(x_plot * self.img_shape[1] / self.resize_shape[1])
-            orig_y = int(y_plot * self.img_shape[0] / self.resize_shape[0])
-            orig_x = np.clip(orig_x, 0, self.img_shape[1] - 1)
-            orig_y = np.clip(orig_y, 0, self.img_shape[0] - 1)
-            spectrum = hdr[orig_y, orig_x, :]  # Reflectancia en %
+            point = [round(event.xdata), round(event.ydata)]
+            spectrum = img_reflectance[point[1], point[0], :]  # Reflectancia en %
 
+            # Suavizar la curva espectral
+            wavelen_smooth = np.linspace(wavelen.min(), wavelen.max(), 500)
+            spline = make_interp_spline(wavelen, spectrum, k=3)
+            spectrum_smooth = spline(wavelen_smooth)
+
+            # Curva espectral
             plt.figure()
-            plt.plot(wavelen, spectrum)
+            plt.plot(wavelen_smooth, spectrum_smooth, color='blue')
+
+            # Líneas discontinuas rojas para las bandas NDVI
+            plt.axvline(x=670, color='red', linestyle='--', label='Red (670 nm)')
+            plt.axvline(x=798, color='red', linestyle='--', label='NIR (798 nm)')
+
             plt.xticks(rotation='vertical')
             plt.xlabel("Wavelength [nm]")
-            plt.ylabel("Reflectance")
+            plt.ylabel("Reflectance [%]")
             plt.grid(True)
 
+            # Cálculo de NDVI
             red_val = spectrum[np.argmin(np.abs(wavelen - 670))]
             nir_val = spectrum[np.argmin(np.abs(wavelen - 798))]
-            NDVI = (nir_val - red_val) / (nir_val + red_val) if (nir_val + red_val) != 0 else 0
+            NDVI = (nir_val - red_val) / (nir_val + red_val)
 
+            # Clasificación por salud
             if NDVI > 0.8:
                 status = "Muy sana"
             elif NDVI > 0.4:
@@ -66,35 +89,51 @@ class EventController():
             else:
                 status = "Estrés severo"
 
-            info_text = f"Reflectancia roja (670 nm): {red_val:.2f}\n"
-            info_text += f"Reflectancia NIR (798 nm): {nir_val:.2f}\n"
+            # Mostrar texto en la gráfica
+            info_text = f"Reflectancia roja (670 nm): {red_val:.2f}%\n"
+            info_text += f"Reflectancia NIR (798 nm): {nir_val:.2f}%\n"
             info_text += f"Índice NDVI: {NDVI:.2f} → {status}"
             plt.text(0.02, 0.95, info_text, transform=plt.gca().transAxes,
                      fontsize=9, verticalalignment='top', bbox=dict(facecolor='white', alpha=0.7))
-            print(info_text)
+
+            plt.legend()
             plt.tight_layout()
-            plt.show()
+            plt.draw()
+            plt.pause(0.0001)
+            
+            # También por consola
+            print(info_text)
+
+# Guardar imagen en reflectancia real
+img_reflectance = img / 10000.0 * 100  # [0–100 %]
+
+
+    # Crear imagen escalada para visualización con mejor contraste
+img_display = np.zeros_like(img, dtype=np.uint8)
+
+# Rango de bandas a aclarar y aumentar sutilmente el contraste
+start_band = 125
+end_band = 140
+
+for i in range(img.shape[2]):
+    band = img[:, :, i] / 10000.0  # Normalizar 0-1
+    
+    # Ajuste específico para bandas del rango definido
+    if start_band <= i <= end_band:
+        # Aclarado y contraste 
+        band = np.clip((band * 1.2) - 0.05, 0, 1)
+    else:
+        # Normalización estándar usando percentiles
+        p1, p99 = np.percentile(band, [1, 99])
+        band = np.clip((band - p1) / (p99 - p1), 0, 1)
+    
+    img_display[:, :, i] = (band * 255).astype(np.uint8)
+
 
 # Mostrar imagen y activar controles
 fig, ax = plt.subplots()
-band_index = 150  # Cambia el índice si quieres otra banda
-
-# Normalizar para visualizar mejor (0-255)
-band = hdr.read_band(band_index)
-band_norm = cv2.normalize(band, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
-
-# Redimensionar manteniendo proporción (ancho fijo a 500 px)
-fixed_width = 500
-aspect_ratio = band_norm.shape[0] / band_norm.shape[1]
-new_height = int(fixed_width * aspect_ratio)
-resize_shape = (fixed_width, new_height)
-resized_band = cv2.resize(band_norm, resize_shape, interpolation=cv2.INTER_LINEAR)
-
-im = ax.imshow(resized_band, cmap='gray')
-ax.set_title(f"Banda {band_index} ({wavelen[band_index]} nm)")
-ax.axis('off')
-
-controller = EventController(ax, band_norm.shape, resized_band.shape)
+controller = EventController()
+tifffile.imshow(np.rollaxis(img_display, 2, 0), figure=fig)
 fig.canvas.mpl_connect('button_press_event', controller.onclick)
 fig.canvas.mpl_connect('key_press_event', controller.on_key_press)
 fig.canvas.mpl_connect('key_release_event', controller.on_key_release)
