@@ -77,9 +77,9 @@ def onclick(event):
     ref = np.zeros(bands, dtype=np.float32)
     epsilon = 1e-6
 
-    # --------------------------
+ 
     # Calcular reflectancia por banda
-    # --------------------------
+  
     white_reflectance = 0.99 # Valor de reflectancia conocida del panel blanco
     for b in range(bands):
         s = resized_cube[b, y_plot, x_plot]
@@ -122,9 +122,8 @@ def onclick(event):
     else:
         status = "Estrés severo"
 
-    # --------------------------
-    # Mostrar información en la gráfica
-    # --------------------------
+    
+    
     info_text = f"Reflectancia en 1510nm: {R_1510*100:.2f}%\n"
     info_text += f"Reflectancia en 1680nm: {R_1680*100:.2f}%\n"
     info_text += f"Índice NDNI: {NDNI:.2f} → {status}"
@@ -144,4 +143,5 @@ def onclick(event):
 # Evento clic para la figura
 cid = plt.gcf().canvas.mpl_connect('button_press_event', onclick)
 plt.show()
+
 
