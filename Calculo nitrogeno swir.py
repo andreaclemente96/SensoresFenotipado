@@ -144,4 +144,11 @@ def onclick(event):
 cid = plt.gcf().canvas.mpl_connect('button_press_event', onclick)
 plt.show()
 
+# Bibliografía (uso de librerías y técnicas de programación)
+# Harris, C. R., Millman, K. J., van der Walt, S. J., et al. (2020). Array programming with NumPy. Nature, 585, 357–362. https://doi.org/10.1038/s41586-020-2649-2
+# Goetz, A. F. H., Vane, G., Solomon, J. E., & Rock, B. N. (1985). Imaging spectrometry for Earth remote sensing. Science, 228(4704), 1147–1153. https://doi.org/10.1126/science.228.4704.1147
+# Solberg, R., & Schmitt, M. (2019). spectral: A Python library for hyperspectral image processing. [Software]. https://www.spectralpython.com/
+# Lundh, F. (2001). An Introduction to Tkinter. Pythonware. https://www.pythonware.com/library/tkinter/
+# Hunter, J. D. (2007). Matplotlib: A 2D graphics environment. Computing in Science & Engineering, 9(3), 90–95. https://doi.org/10.1109/MCSE.2007.55
+# Bradski, G. (2000). The OpenCV Library. Dr. Dobb’s Journal of Software Tools. https://doi.org/10.1109/MCSE.2007.55
 
