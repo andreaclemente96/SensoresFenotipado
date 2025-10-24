@@ -166,8 +166,11 @@ plt.show()
 
 # Bibliografía general:
 
-#Harris, C. R., Millman, K. J., van der Walt, S. J., Gommers, R., Virtanen, P., Cournapeau, D., … Oliphant, T. E. (2020). Array programming with NumPy. Nature, 585, 357–362. https://doi.org/10.1038/s41586-020-2649-2
+# Harris, C. R., Millman, K. J., van der Walt, S. J., et al. Array programming with NumPy. https://numpy.org/
+# (Uso de NumPy para manipulación de arrays y normalización de datos)
 
-#Hunter, J. D. (2007). Matplotlib: A 2D graphics environment. Computing in Science & Engineering, 9(3), 90–95. https://doi.org/10.1109/MCSE.2007.55
+# Hunter, J. D. Matplotlib: A 2D graphics environment. https://matplotlib.org/
+# (Uso de Matplotlib para visualización de imágenes y colorbar)
 
-#van der Walt, S., Schönberger, J. L., Nunez-Iglesias, J., Boulogne, F., Warner, J. D., Yager, N., … Yu, T. (2014). scikit-image: Image processing in Python. PeerJ, 2, e453. https://doi.org/10.7717/peerj.453
+# van der Walt, S., Schönberger, J. L., Nunez-Iglesias, J., et al. scikit-image: Image processing in Python. https://scikit-image.org/
+# (Uso de scikit-image para procesamiento de imágenes)
