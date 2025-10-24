@@ -40,6 +40,23 @@ img = tifffile.imread(img_path).astype(float)
 img = img[:, :, 12:]  # Eliminar las 12 primeras bandas: Ultravioleta
 wavelen = wavelen[12:]
 
+# Guardar imagen en reflectancia real
+img_reflectance = img / 10000.0 * 100  # [0–100 %]
+
+# Crear imagen escalada para visualización con mejor contraste
+img_display = np.zeros_like(img, dtype=np.uint8)
+start_band = 125
+end_band = 140
+
+for i in range(img.shape[2]):
+    band = img[:, :, i] / 10000.0  # Normalizar 0-1
+    if start_band <= i <= end_band:
+        band = np.clip((band * 1.2) - 0.05, 0, 1)
+    else:
+        p1, p99 = np.percentile(band, [1, 99])
+        band = np.clip((band - p1) / (p99 - p1), 0, 1)
+    img_display[:, :, i] = (band * 255).astype(np.uint8)
+
 # Clase de control de eventos
 class EventController():
     def __init__(self):
@@ -54,104 +71,71 @@ class EventController():
             self.shift_is_held = False
 
     def onclick(self, event):
-        if self.shift_is_held and not event.dblclick and event.button == 1 and (event.xdata is not None) and (event.ydata is not None):
-            self.shift_is_held = False
+        if event.xdata is None or event.ydata is None:
+            return
 
-            # Coordenadas del píxel seleccionado
-            point = [round(event.xdata), round(event.ydata)]
-            coord_x = point[0]  # Coordenada X (Columna)
-            coord_y = point[1]  # Coordenada Y (Fila)
+        if not self.shift_is_held:
+            return
 
-            spectrum = img_reflectance[coord_y, coord_x, :]  # Reflectancia en %
+        x_plot, y_plot = int(event.xdata), int(event.ydata)
+        spectrum = img_reflectance[y_plot, x_plot, :].copy()
 
-            # Suavizar la curva espectral
-            # Suavizado del espectro usando filtro Savitzky–Golay
-            # Basado en: Luo, J., Ying, K., & Bai, J. (2005). 
-            # "Savitzky–Golay smoothing and differentiation filter for even number data". Signal Processing, 85(7), 1429–1434.
-            spectrum_soft = savgol_filter(spectrum, window_length=9, polyorder=2)
+        # Suavizado Savitzky-Golay
+        spectrum_smooth = savgol_filter(spectrum, window_length=9, polyorder=2)
 
-            # Interpolación spline cúbica: Mészáros, Sz., & Allende Prieto, C. (2013). 
-            # On the interpolation of model atmospheres and high-resolution synthetic stellar spectra. MNRAS, 430(4), 3285–3292.
-            # Usado para suavizar la curva espectral
-            wavelen_smooth = np.linspace(wavelen.min(), wavelen.max(), 500)
-            spline = make_interp_spline(wavelen, spectrum_soft, k=3)
-            spectrum_smooth = spline(wavelen_smooth)
+        # Interpolación spline cúbica
+        wavelen_smooth = np.linspace(wavelen.min(), wavelen.max(), 500)
+        spline = make_interp_spline(wavelen, spectrum_smooth, k=3)
+        spectrum_smooth = spline(wavelen_smooth)
 
+        plt.figure(figsize=(8,5))
+        plt.plot(wavelen_smooth, spectrum_smooth, label="Reflectancia suavizada")
 
-            # Curva espectral
-            plt.figure()
-            plt.plot(wavelen_smooth, spectrum_smooth)
+        # Líneas para bandas de interés
+        for band in [670, 798]:
+            idx = np.argmin(np.abs(wavelen - band))
+            plt.axvline(wavelen[idx], color="red", linestyle="--", label=f"{band} nm")
+            plt.scatter(wavelen[idx], spectrum[idx], color="red")
+            plt.text(wavelen[idx], spectrum[idx]+1, f"{spectrum[idx]:.2f}%", color='red', fontsize=9)
 
-            # Líneas discontinuas rojas para las bandas NDVI
-            plt.axvline(x=670, linestyle='--', color= "red", label='Red (670 nm)')
-            plt.axvline(x=798, linestyle='--', color= "red", label='NIR (798 nm)')
+        plt.xlabel("Wavelength [nm]")
+        plt.ylabel("Reflectance [%]")
+        plt.title(f"Píxel seleccionado (X={x_plot}, Y={y_plot})")
+        plt.grid(True)
 
-            plt.xticks(rotation='vertical')
-            plt.xlabel("Wavelength [nm]")
-            plt.ylabel("Reflectance [%]")
-            plt.grid(True)
-            plt.title("Espectro del Píxel Seleccionado")
+        # Cálculo NDVI
+        red_val = spectrum[np.argmin(np.abs(wavelen - 670))]
+        nir_val = spectrum[np.argmin(np.abs(wavelen - 798))]
+        NDVI = (nir_val - red_val) / (nir_val + red_val)
 
-            # Cálculo de NDVI
-            red_val = spectrum[np.argmin(np.abs(wavelen - 670))]
-            nir_val = spectrum[np.argmin(np.abs(wavelen - 798))]
-            NDVI = (nir_val - red_val) / (nir_val + red_val)
+        # Clasificación por salud
+        if NDVI > 0.8:
+            status = "Muy sana"
+        elif NDVI > 0.4:
+            status = "Moderadamente sana"
+        elif NDVI > 0.2:
+            status = "Posible estrés"
+        else:
+            status = "Estrés severo"
 
-            # Clasificación por salud
-            if NDVI > 0.8:
-                status = "Muy sana"
-            elif NDVI > 0.4:
-                status = "Moderadamente sana"
-            elif NDVI > 0.2:
-                status = "Posible estrés"
-            else:
-                status = "Estrés severo"
+        # Texto en gráfica
+        info_text = (
+            f"Píxel (X={x_plot}, Y={y_plot})\n"
+            f"Reflectancia roja (670 nm): {red_val:.2f}%\n"
+            f"Reflectancia NIR (798 nm): {nir_val:.2f}%\n"
+            f"NDVI: {NDVI:.2f} → {status}"
+        )
+        plt.text(0.02, 0.98, info_text, transform=plt.gca().transAxes,
+                 fontsize=9, verticalalignment='top',
+                 bbox=dict(facecolor='white', alpha=0.7))
 
-            # --- MODIFICACIÓN 2: INCLUIR COORDENADAS EN EL TEXTO ---
-            info_text = f"Píxel (Columna X, Fila Y): ({coord_x}, {coord_y})\n"
-            info_text += f"Reflectancia roja (670 nm): {red_val:.2f}%\n"
-            info_text += f"Reflectancia NIR (798 nm): {nir_val:.2f}%\n"
-            info_text += f"Índice NDVI: {NDVI:.2f} → {status}"
+        plt.legend()
+        plt.tight_layout()
+        plt.show()
 
-            # Mostrar texto en la gráfica
-            plt.text(
-                0.02, 0.98, info_text, transform=plt.gca().transAxes,
-                fontsize=9, verticalalignment='top',
-                bbox=dict(facecolor='white', alpha=0.7)
-            )
-
-            plt.legend()
-            plt.tight_layout()
-            plt.draw()
-            plt.pause(0.0001)
-
-            # También por consola
-            print("\n" + "=" * 30)
-            print(f"Píxel seleccionado: (X={coord_x}, Y={coord_y})")
-            print(info_text)
-            print("=" * 30 + "\n")
-
-# Guardar imagen en reflectancia real
-img_reflectance = img / 10000.0 * 100  # [0–100 %]
-
-# Crear imagen escalada para visualización con mejor contraste
-img_display = np.zeros_like(img, dtype=np.uint8)
-
-# Rango de bandas a aclarar y aumentar sutilmente el contraste
-start_band = 125
-end_band = 140
-
-for i in range(img.shape[2]):
-    band = img[:, :, i] / 10000.0  # Normalizar 0-1
-
-    # Ajuste específico para bandas del rango definido
-    if start_band <= i <= end_band:
-        band = np.clip((band * 1.2) - 0.05, 0, 1)
-    else:
-        p1, p99 = np.percentile(band, [1, 99])
-        band = np.clip((band - p1) / (p99 - p1), 0, 1)
-
-    img_display[:, :, i] = (band * 255).astype(np.uint8)
+        print("\n" + "="*30)
+        print(info_text)
+        print("="*30 + "\n")
 
 # Mostrar imagen y activar controles
 fig, ax = plt.subplots()
@@ -174,3 +158,4 @@ plt.show()
 
 # van der Walt, S., Schönberger, J. L., Nunez-Iglesias, J., et al. scikit-image: Image processing in Python. https://scikit-image.org/
 # (Uso de scikit-image para procesamiento de imágenes)
+
