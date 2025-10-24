@@ -145,11 +145,24 @@ cid = plt.gcf().canvas.mpl_connect('button_press_event', onclick)
 plt.show()
 
 # Bibliografía (uso de librerías y técnicas de programación)
-# Harris, C. R., Millman, K. J., van der Walt, S. J., et al. (2020). Array programming with NumPy. Nature, 585, 357–362. https://doi.org/10.1038/s41586-020-2649-2
-# Goetz, A. F. H., Vane, G., Solomon, J. E., & Rock, B. N. (1985). Imaging spectrometry for Earth remote sensing. Science, 228(4704), 1147–1153. https://doi.org/10.1126/science.228.4704.1147
-# Solberg, R., & Schmitt, M. (2019). spectral: A Python library for hyperspectral image processing. [Software]. https://www.spectralpython.net/
-# van Rossum, G. (n.d.). tkinter: Python interface to Tcl/Tk. Python Software Foundation. https://docs.python.org/3/library/tkinter.html
-# Hunter, J. D. (2007). Matplotlib: A 2D graphics environment. Computing in Science & Engineering, 9(3), 90–95. https://doi.org/10.1109/MCSE.2007.55
-# OpenCV. (s.f.). OpenCV library. https://opencv.org/
+# Harris, C. R., Millman, K. J., van der Walt, S. J., et al. Array programming with NumPy. https://numpy.org/
+# (Uso de NumPy para manipulación de arrays y normalización de datos)
+
+# Goetz, A. F. H., Vane, G., Solomon, J. E., & Rock, B. N. Imaging spectrometry for Earth remote sensing. https://www.science.org/
+# (Referencia sobre espectroscopía de imágenes aplicada a teledetección)
+
+# Solberg, R., & Schmitt, M. spectral: A Python library for hyperspectral image processing. https://www.spectralpython.net/
+# (Uso de Spectral Python para procesamiento de imágenes hiperespectrales)
+
+# van Rossum, G. tkinter: Python interface to Tcl/Tk. https://docs.python.org/3/library/tkinter.html
+# (Uso de Tkinter para ventanas emergentes y selección de archivos)
+
+# Hunter, J. D. Matplotlib: A 2D graphics environment. https://matplotlib.org/
+# (Uso de Matplotlib para visualización de imágenes y gráficas)
+
+# OpenCV. OpenCV library. https://opencv.org/
+# (Uso de OpenCV para redimensionar y manipular imágenes)
+
+
 
 
