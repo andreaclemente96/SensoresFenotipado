@@ -4,24 +4,29 @@ from PIL import Image
 from tkinter import Tk
 from tkinter.filedialog import askopenfilename
 
-# Selección de la imagen
+# Elegir imagen
 Tk().withdraw()
-img_path = askopenfilename(title="Selecciona la imagen LWIR BMP",
-                           filetypes=[("Archivos BMP", "*.bmp"), ("Todos los archivos", "*.*")])
+img_path = askopenfilename(title="Selecciona imagen LWIR (8bit)",
+                           filetypes=[("BMP/PNG", "*.bmp;*.png"), ("Todos", "*.*")])
 
-with Image.open(img_path) as img:
-    img_array = np.array(img)
+# Cargar a array
+img = np.array(Image.open(img_path))
 
-# Normalizar los valores a 0-1
-img_norm = (img_array - img_array.min()) / (img_array.max() - img_array.min())
+# Usar un canal si es RGB
+if img.ndim == 3:
+    img = img[:, :, 0]
 
-# Mostrar imagen en escala de grises y colorbar también en gris
-plt.figure()
-plt.imshow(img_norm, cmap='gray')  # escala de grises
-plt.colorbar(label="Intensidad relativa")
-plt.title("Imagen LWIR (normalizada)")
-
+# Mostrar con paleta térmica
+plt.figure(figsize=(8,6))
+im = plt.imshow(img, cmap='inferno')  
 plt.axis('off')
+plt.title("Imagen térmica LWIR")
+
+# Añadir colorbar personalizada
+cbar = plt.colorbar(im)
+cbar.set_ticks([0, 255])
+cbar.set_ticklabels(['0 = Frío', '255 = Caliente'])
+
 plt.show()
 
 # Bibliografía utilizada para justificar el código:
