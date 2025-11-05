@@ -48,12 +48,6 @@ else:
     wavelengths = np.arange(bands)
 
 
-# Calcular media global de dark y white por banda
-# Para normalización posterior
-dark_mean  = np.mean(dark, axis=(0,1))
-white_mean = np.mean(white, axis=(0,1))
-
-
 # Mostrar banda de ejemplo para seleccionar pixel
 
 banda_vista = 30 # Se usa la banda 30 como ejemplo
@@ -162,6 +156,7 @@ plt.show()
 
 # OpenCV. OpenCV library. https://opencv.org/
 # (Uso de OpenCV para redimensionar y manipular imágenes)
+
 
 
 
